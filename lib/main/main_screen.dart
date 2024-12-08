@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/main/main_page.dart';
 import 'package:myapp/main/search/searchPage.dart';
+import 'package:myapp/main/setting_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -16,15 +17,12 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const MainPage(), // Main 탭 내용
     const SearchPage(), // Search 탭 내용
-    const Center(child: Text('Settings Page Content')), // Settings 탭 내용
+    const SettingsPage(), // Settings 탭 내용
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Main Page'),
-      ),
       body: _pages[_currentIndex], // 선택된 탭의 콘텐츠를 표시
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex, // 현재 선택된 탭
