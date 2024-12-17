@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myapp/auth/page/login_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:myapp/firebase_options.dart';
+import 'package:myapp/main/main_page.dart';
 import 'package:myapp/main/main_screen.dart';
 
 Future<void> main() async {

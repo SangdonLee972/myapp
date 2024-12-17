@@ -218,6 +218,8 @@ class UsedPhonePdfGenerater {
     }
   }
 
+  
+
   static pw.Widget _buildInfoRowTwo(
       String label1, String value1, String label2, String value2, pw.Font ttf) {
     return pw.Row(
@@ -404,4 +406,6 @@ class UsedPhonePdfGenerater {
       ],
     );
   }
+
+  
 }

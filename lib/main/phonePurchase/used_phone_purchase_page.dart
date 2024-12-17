@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:myapp/auth/service/save_service.dart';
 import 'package:myapp/main/phonePurchase/used_phone_pdf_generater.dart';
@@ -168,6 +167,12 @@ class _UsedPhonePurchasePageState extends State<UsedPhonePurchasePage> {
 // 저장 처리 함수
   void _proceedWithSaving() async {
     try {
+      String? agreementName = await _showNameInputDialog(context);
+      if (agreementName == null || agreementName.isEmpty) {
+        _showError('이름을 입력해야 합니다.');
+        return;
+      }
+
       // Step 1: 기기 정보 리스트 생성
       final devices = _deviceDetails.map((device) {
         return Device(
@@ -179,8 +184,7 @@ class _UsedPhonePurchasePageState extends State<UsedPhonePurchasePage> {
 
       // Step 2: PurchaseAgreementModel 객체 생성
       final purchaseAgreement = PurchaseAgreementModel(
-        nameForStorage:
-            '${_sellerNameController.text}_${_dateController.text}', // 예: "홍길동_2023-12-07"
+        nameForStorage: agreementName, // 예: "홍길동_2023-12-07"
         saleDate: DateTime.tryParse(_dateController.text) ?? DateTime.now(),
         companyName: _companyController.text,
         sellerName: _sellerNameController.text,
@@ -207,6 +211,7 @@ class _UsedPhonePurchasePageState extends State<UsedPhonePurchasePage> {
         agreement: purchaseAgreement,
         signature: _signatureImage,
       )) as Uint8List;
+      print('testset');
 
       // Step 4: Firebase 저장 로직 호출
       await SaveService.savePurchaseAgreement(
@@ -214,6 +219,8 @@ class _UsedPhonePurchasePageState extends State<UsedPhonePurchasePage> {
         pdfData: pdfData,
         signatureImage: _signatureImage,
       );
+
+      print('upload Success');
 
       // 성공 메시지
       ScaffoldMessenger.of(context).showSnackBar(
@@ -300,6 +307,39 @@ class _UsedPhonePurchasePageState extends State<UsedPhonePurchasePage> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  // 팝업창 함수
+  Future<String?> _showNameInputDialog(BuildContext context) async {
+    final TextEditingController nameController = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('이름 입력'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              hintText: '동의서에 작성할 이름을 입력하세요',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 팝업 닫기
+              },
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(nameController.text.trim());
+              },
+              child: const Text('확인'),
+            ),
+          ],
         );
       },
     );

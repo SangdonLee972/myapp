@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:myapp/main/repiar/repair_content_pdf_generater.dart';
+import 'package:myapp/model/repair_concent.dart';
+import 'package:signature/signature.dart';
 
 class RepairConsentPage extends StatefulWidget {
   const RepairConsentPage({Key? key}) : super(key: key);
@@ -17,6 +22,18 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
   final TextEditingController hasLoanPhoneController = TextEditingController();
   final TextEditingController otherInputController = TextEditingController();
   final TextEditingController issueDetailsController = TextEditingController();
+  final TextEditingController repairAmountController = TextEditingController();
+
+  // 서명 관련 함수
+  final SignatureController _signatureController = SignatureController(
+    penStrokeWidth: 2,
+    penColor: Colors.black,
+    exportBackgroundColor: Colors.white,
+  );
+
+  Uint8List? _signatureImage;
+
+  String customerName = "";
 
   @override
   void dispose() {
@@ -69,17 +86,122 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
     "수리불가": false,
   };
 
+  bool naver = false;
+  bool google = false;
+  bool daangn = false;
+  bool naverBook = false;
+  bool presidentPhoneSale = false;
+
   bool hasScreenDamage = false; // 액정파손 여부
   bool hasUsim = false; // 유심 보유 여부
 
   bool? _requiredConsent; // 필수 동의
-  bool? _selectiveConsent; // 선택 동의
+  bool _selectiveConsent = false; // 선택 동의
 
   final Icon checkIcon = const Icon(
     Icons.check, // 빨간색 체크 아이콘
     color: Colors.red, // 빨간색 설정
     size: 20, // 아이콘 크기
   );
+
+  void _validateAndSave() {
+    List<String> missingFields = [];
+
+    if (nameController.text.trim().isEmpty) missingFields.add("고객명");
+    if (contactController.text.trim().isEmpty) missingFields.add("연락처");
+    if (addressController.text.trim().isEmpty) missingFields.add("거주지역");
+    if (modelController.text.trim().isEmpty) missingFields.add("기종");
+    if (passwordController.text.trim().isEmpty) missingFields.add("기기 비밀번호");
+    if (issueDetailsController.text.trim().isEmpty) {
+      missingFields.add("고장 증상 세부내역");
+    }
+    if (repairAmountController.text.trim().isEmpty) missingFields.add("수리금액");
+
+    // 수리 내용 체크박스 검증
+    bool isAnyRepairDetailChecked = _repairDetails.values.contains(true);
+    if (!isAnyRepairDetailChecked) {
+      missingFields.add("수리 내용");
+    }
+
+    bool isAnyIssueChecked = _issues.values.contains(true);
+    if (!isAnyIssueChecked) {
+      missingFields.add("고장 증상");
+    }
+
+    // Check if signature is provided
+    if (_signatureImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("서명을 완료해주세요"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (missingFields.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("${missingFields.join(", ")}을(를) 입력해주세요."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (_requiredConsent != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("개인정보 수집 동의(필수)를 체크해주세요."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      saveConcent();
+    }
+  }
+
+  void saveConcent() {
+    // RepairRequestModel 객체 생성
+    final repairRequest = RepairRequestModel(
+      nameForStorage:
+          "repair_${DateTime.now().millisecondsSinceEpoch}", // 저장용 이름
+      customerName: nameController.text.trim(),
+      contact: contactController.text.trim(),
+      residence: addressController.text.trim(),
+      deviceModel: modelController.text.trim(),
+      devicePassword: passwordController.text.trim(),
+      hasLoanPhone: hasLoanPhoneController.text.trim().isEmpty
+          ? "" // 입력값이 없으면 빈 문자열
+          : hasLoanPhoneController.text.trim().toLowerCase(), // 값이 'yes'면 true
+      issueDetails: Map.from(_issues), // 고장 증상 Map
+      repairDetails: Map.from(_repairDetails), // 수리 내용 Map
+      isScreenDamaged: hasScreenDamage, // 액정 파손 여부
+      hasSimCard: hasUsim, // 유심 여부
+      detailedIssue: issueDetailsController.text.trim(),
+      repairCost: double.tryParse(repairAmountController.text.trim()) ?? 0.0,
+      reviewOptions: {
+        'naver': naver,
+        'google': google,
+        'daangn': daangn
+      }, // 리뷰 참여 옵션
+      hasNaverReservation: naverBook, // 네이버 예약 여부
+      hasDiscount: presidentPhoneSale, // 할인 여부
+      requiredConsent: _requiredConsent!,
+      selectiveConsent: _selectiveConsent,
+      imageUrl: null, // 이미지 URL은 선택사항
+    );
+
+    RepairConsentPdfGenerator.generateConsentPdf(
+        request: repairRequest, signature: _signatureImage);
+
+    // 생성된 객체를 확인 (테스트용 출력)
+    print("Repair Request Model Created: ${repairRequest.toMap()}");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("수리의뢰서가 성공적으로 저장되었습니다!"),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,8 +267,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
               ],
             ),
             const SizedBox(height: 4),
-            // 고객명과 연락처 한 줄에 배치
-            // 고객명과 연락처 (박스 형태로)
+
             Table(
               border: TableBorder.all(),
               columnWidths: const {
@@ -159,7 +280,26 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                 TableRow(
                   children: [
                     _buildLabelCell('고객명', fontSize, true),
-                    _buildInputCell(nameController, fontSize),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: TextFormField(
+                        controller: nameController,
+                        style: TextStyle(fontSize: fontSize),
+                        decoration: InputDecoration(
+                          hintText: '입력해주세요',
+                          hintStyle: TextStyle(fontSize: fontSize * 0.9),
+                          isDense: true, // 기본 패딩 제거
+                          contentPadding: EdgeInsets.zero, // 내부 패딩 제거
+                          border: InputBorder
+                              .none, // 테두리 제거 // Compact height for the input field
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            customerName = value; // 입력값 저장 및 UI 업데이트
+                          });
+                        },
+                      ),
+                    ),
                     _buildLabelCell('연락처', fontSize, true),
                     _buildInputCell(contactController, fontSize),
                   ],
@@ -579,8 +719,8 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                   Expanded(
                       flex: 5,
                       child: Container(
-                        decoration: const BoxDecoration(
-                            border: Border(left: BorderSide())),
+                        decoration:
+                            BoxDecoration(border: Border(left: BorderSide())),
                         height: MediaQuery.of(context).size.height * 0.15,
                         child: Center(
                           child: Text(
@@ -600,18 +740,208 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                       child: Row(
                     children: [
                       Expanded(
-                          child: Center(
-                        child: Text(
-                          '수리금액',
-                          style: TextStyle(
-                              fontSize: fontSize, fontWeight: FontWeight.bold),
+                          child: Container(
+                        height: MediaQuery.of(context).size.height * 0.12,
+                        decoration:
+                            BoxDecoration(border: Border(right: BorderSide())),
+                        child: Center(
+                          child: Text(
+                            '수리금액(원)',
+                            style: TextStyle(
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ))
+                      )),
+                      Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: repairAmountController,
+                            style: TextStyle(
+                                fontSize:
+                                    fontSize), // Apply font size to input text
+                            decoration: InputDecoration(
+                              isDense: true, // 기본 패딩 제거
+                              contentPadding: EdgeInsets.all(10), // 내부 패딩 제거
+                              border: InputBorder.none,
+                              hintText: '입력해주세요',
+                              hintStyle: TextStyle(
+                                  fontSize:
+                                      fontSize * 0.9), // Hint text font size
+                            ),
+                          ))
                     ],
                   )),
                   Expanded(
                       child: Column(
-                    children: [],
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                              child: Container(
+                            height: MediaQuery.of(context).size.height * 0.04,
+                            decoration: const BoxDecoration(
+                                border: Border(
+                              left: BorderSide(),
+                              right: BorderSide(),
+                            )),
+                            child: Center(
+                              child: Text(
+                                '리뷰 참여',
+                                style: TextStyle(fontSize: fontSize),
+                              ),
+                            ),
+                          )),
+                          Expanded(
+                              flex: 2,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '네이버',
+                                    style: TextStyle(fontSize: fontSize),
+                                  ),
+                                  Transform.scale(
+                                      scale: 0.7, // 크기를 조정
+                                      child: Checkbox(
+                                        value: naver,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            naver = value!;
+                                          });
+                                        },
+                                        side: const BorderSide(width: 1),
+                                        // 체크박스 크기 조정
+                                      )),
+                                  Text(
+                                    '구글',
+                                    style: TextStyle(fontSize: fontSize),
+                                  ),
+                                  Transform.scale(
+                                      scale: 0.7, // 크기를 조정
+                                      child: Checkbox(
+                                        value: google,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            google = value!;
+                                          });
+                                        },
+                                        side: const BorderSide(width: 1),
+                                        // 체크박스 크기 조정
+                                      )),
+                                  Text(
+                                    '당근',
+                                    style: TextStyle(fontSize: fontSize),
+                                  ),
+                                  Transform.scale(
+                                      scale: 0.7, // 크기를 조정
+                                      child: Checkbox(
+                                        value: daangn,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            daangn = value!;
+                                          });
+                                        },
+                                        side: const BorderSide(width: 1),
+                                        // 체크박스 크기 조정
+                                      )),
+                                ],
+                              )),
+                        ],
+                      ),
+                      const Divider(
+                        height: 1,
+                        color: Colors.black,
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: Container(
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.04,
+                                  decoration: const BoxDecoration(
+                                      border: Border(
+                                    left: BorderSide(),
+                                    right: BorderSide(),
+                                  )),
+                                  child: Center(
+                                    child: Text(
+                                      '네이버예약',
+                                      style: TextStyle(fontSize: fontSize),
+                                    ),
+                                  ))),
+                          Expanded(
+                              flex: 2,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '네이버 예약',
+                                    style: TextStyle(fontSize: fontSize),
+                                  ),
+                                  Transform.scale(
+                                      scale: 0.7, // 크기를 조정
+                                      child: Checkbox(
+                                        value: naverBook,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            naverBook = value!;
+                                          });
+                                        },
+                                        side: const BorderSide(width: 1),
+                                        // 체크박스 크기 조정
+                                      )),
+                                ],
+                              )),
+                        ],
+                      ),
+                      const Divider(
+                        height: 1,
+                        color: Colors.black,
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: Container(
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.04,
+                                  decoration: const BoxDecoration(
+                                      border: Border(
+                                    left: BorderSide(),
+                                    right: BorderSide(),
+                                  )),
+                                  child: Center(
+                                    child: Text(
+                                      '폰통령 할인',
+                                      style: TextStyle(fontSize: fontSize),
+                                    ),
+                                  ))),
+                          Expanded(
+                              flex: 2,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '3,000원',
+                                    style: TextStyle(fontSize: fontSize),
+                                  ),
+                                  Transform.scale(
+                                      scale: 0.7, // 크기를 조정
+                                      child: Checkbox(
+                                        value: presidentPhoneSale,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            presidentPhoneSale = value!;
+                                          });
+                                        },
+                                        side: const BorderSide(width: 1),
+                                        // 체크박스 크기 조정
+                                      )),
+                                ],
+                              )),
+                        ],
+                      )
+                    ],
                   ))
                 ],
               ),
@@ -709,10 +1039,10 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                 Transform.scale(
                   scale: 0.7, // 크기를 조정
                   child: Checkbox(
-                    value: _selectiveConsent ?? false, // null일 경우 기본값 false 설정
+                    value: _selectiveConsent, // null일 경우 기본값 false 설정
                     onChanged: (value) {
                       setState(() {
-                        _selectiveConsent = value; // null 체크 필요 없이 바로 값 설정
+                        _selectiveConsent = value!; // null 체크 필요 없이 바로 값 설정
                       });
                     },
                     side: const BorderSide(width: 1),
@@ -725,19 +1055,61 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
               ],
             ),
             // Signature Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('이름: ____________'),
-                const Text('서명: ____________'),
-              ],
-            ),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Text(
+                '이름   :   ',
+                style: TextStyle(
+                    fontSize: fontSize * 1.6, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(
+                width: screenWidth * 0.16,
+                child: Text(
+                  customerName,
+                  style: TextStyle(
+                      fontSize: fontSize * 1.6, fontWeight: FontWeight.bold),
+                ),
+              ),
+              GestureDetector(
+                onTap: _showSignaturePad, // 서명 패드 표시
+                child: Container(
+                  width: screenWidth * 0.2,
+                  height: screenWidth * 0.1,
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: const Color.fromARGB(69, 0, 0, 0)),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // 서명 이미지 (입력 후 표시)
+                      if (_signatureImage != null)
+                        Image.memory(
+                          _signatureImage!,
+                          fit: BoxFit.contain,
+                        ),
+
+                      const Text(
+                        '[서명]',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromARGB(96, 117, 117, 117),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ]),
             const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    _validateAndSave();
+                  },
                   style: TextButton.styleFrom(
                     backgroundColor:
                         const Color.fromARGB(255, 187, 131, 224), // 버튼 배경색
@@ -900,6 +1272,67 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
           style: TextStyle(fontSize: fontSize),
         ),
       ],
+    );
+  }
+
+  // 서명 관련 함수
+
+  void _showSignaturePad() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // 화면 높이에 따라 동적 크기 조정
+      builder: (BuildContext context) {
+        return Padding(
+          padding: MediaQuery.of(context).viewInsets, // 키보드 등 화면 크기 조정
+          child: Container(
+            height: 300,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                const Text(
+                  '서명을 입력해주세요',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Signature(
+                    controller: _signatureController,
+                    backgroundColor: Colors.grey[200]!,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        _signatureController.clear();
+                      },
+                      child: const Text('지우기'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (_signatureController.isNotEmpty) {
+                          // 서명을 이미지로 변환
+                          final signature =
+                              await _signatureController.toPngBytes();
+                          if (signature != null) {
+                            setState(() {
+                              _signatureImage = signature; // 서명 이미지 저장
+                            });
+                          }
+                        }
+                        Navigator.of(context).pop(); // BottomSheet 닫기
+                      },
+                      child: const Text('저장'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
