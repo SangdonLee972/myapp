@@ -7,19 +7,29 @@ import 'dart:html' as html;
 
 class ExcelExportService {
   // 엑셀 파일 생성
-  static Future<Uint8List> generateExcel(
-      List<Map<String, dynamic>> data) async {
+
+  static Future<Uint8List> generateExcel({
+    required List<Map<String, dynamic>> purchaseData,
+    required List<Map<String, dynamic>> repairData,
+  }) async {
     var excel = Excel.createExcel();
-    Sheet sheet = excel['Sheet1'];
 
-    // 헤더 작성
-    List<String> headers = ['이름', 'IMEI', '연락처', '은행', '예금주'];
-    sheet.insertRowIterables(headers.map((e) => TextCellValue(e)).toList(), 0);
+    // Sheet1: 매매동의서
+    Sheet purchaseSheet = excel['Purchase Agreements'];
+    purchaseSheet.insertRowIterables(
+      [
+        TextCellValue('이름'),
+        TextCellValue('IMEI'),
+        TextCellValue('연락처'),
+        TextCellValue('은행'),
+        TextCellValue('예금주'),
+      ],
+      0,
+    );
 
-    // 데이터 작성
-    for (int i = 0; i < data.length; i++) {
-      var record = data[i];
-      sheet.insertRowIterables(
+    for (int i = 0; i < purchaseData.length; i++) {
+      var record = purchaseData[i];
+      purchaseSheet.insertRowIterables(
         [
           TextCellValue(record['name'] ?? ''),
           TextCellValue(record['imei'] ?? ''),
@@ -31,18 +41,57 @@ class ExcelExportService {
       );
     }
 
+    // Sheet2: 수리동의서
+    Sheet repairSheet = excel['Repair Agreements'];
+    repairSheet.insertRowIterables(
+      [
+        TextCellValue('고객명'),
+        TextCellValue('연락처'),
+        TextCellValue('기종'),
+        TextCellValue('거주지역/동'),
+        TextCellValue('기기 비밀번호'),
+        TextCellValue('고장증상'),
+        TextCellValue('수리내용'),
+        TextCellValue('수리비용'),
+        TextCellValue('이벤트 활용 동의')
+      ],
+      0,
+    );
+
+    for (int i = 0; i < repairData.length; i++) {
+      var record = repairData[i];
+      repairSheet.insertRowIterables(
+        [
+          TextCellValue(record['customerName'] ?? ''),
+          TextCellValue(record['contact'] ?? ''),
+          TextCellValue(record['deviceModel'] ?? ''),
+          TextCellValue(record['residence'] ?? ''),
+          TextCellValue(record['devicePassword'] ?? ''),
+          TextCellValue(_formatMap(record['issueDetails'] ?? {})),
+          TextCellValue(_formatMap(record['repairDetails'] ?? {})),
+          TextCellValue(record['repairCost'] ?? ''),
+          TextCellValue(record['selectiveConsent'] ?? ''),
+        ],
+        i + 1,
+      );
+    }
+
     // 저장 및 반환
     var bytes = excel.save();
     return Uint8List.fromList(bytes!);
   }
 
-  static bool _isDownloading = false; // 중복 호출 방지
+// Map 데이터를 문자열로 변환하는 헬퍼 함수
+  static String _formatMap(Map<String, bool> map) {
+    return map.entries
+        .where((entry) => entry.value == true)
+        .map((entry) => entry.key)
+        .join(', ');
+  }
 
+  // 엑셀 파일 저장
   static Future<void> saveExcelFile(
       String fileName, Uint8List excelData) async {
-    if (_isDownloading) return; // 이미 다운로드 중이면 실행하지 않음
-    _isDownloading = true;
-
     try {
       if (kIsWeb) {
         // 웹 플랫폼: AnchorElement를 사용한 파일 다운로드
@@ -53,7 +102,7 @@ class ExcelExportService {
           ..setAttribute("download", fileName)
           ..style.display = "none";
         html.document.body!.append(anchor);
-        anchor.click(); // 클릭 이벤트 한 번만 실행
+        anchor.click(); // 클릭 이벤트 실행
         anchor.remove();
         html.Url.revokeObjectUrl(url);
       } else {
@@ -66,8 +115,6 @@ class ExcelExportService {
       }
     } catch (e) {
       print("Error saving file: $e");
-    } finally {
-      _isDownloading = false; // 다운로드 상태 초기화
     }
   }
 }

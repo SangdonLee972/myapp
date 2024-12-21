@@ -31,8 +31,15 @@ class _MainScreenState extends State<MainScreen> {
     _isDownloading = true;
 
     try {
-      List<Map<String, dynamic>> data = await SaveService.getSavedRecords();
-      Uint8List excelData = await ExcelExportService.generateExcel(data);
+      List<Map<String, dynamic>> purchasedata =
+          await SaveService.getSavedRecords();
+      List<Map<String, dynamic>> repairdata =
+          await SaveService.getRepairRecords();
+      // 엑셀 생성
+      Uint8List excelData = await ExcelExportService.generateExcel(
+        purchaseData: purchasedata,
+        repairData: repairdata,
+      );
 
       await ExcelExportService.saveExcelFile('phone_purchase.xlsx', excelData);
 

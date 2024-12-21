@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:myapp/auth/service/save_service.dart';
 import 'package:myapp/main/repiar/repair_content_pdf_generater.dart';
 import 'package:myapp/model/repair_concent.dart';
 import 'package:signature/signature.dart';
@@ -48,6 +49,42 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
     otherInputController.dispose();
     issueDetailsController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _showAgreementNameDialog(BuildContext context) async {
+    final TextEditingController nameController = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("동의서 이름 입력"),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(hintText: "동의서 이름을 입력해주세요"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("취소"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(nameController.text),
+              child: const Text("확인"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   // 고장증상
@@ -104,7 +141,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
     size: 20, // 아이콘 크기
   );
 
-  void _validateAndSave() {
+  Future<void> _validateAndSave() async {
     List<String> missingFields = [];
 
     if (nameController.text.trim().isEmpty) missingFields.add("고객명");
@@ -116,6 +153,9 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
       missingFields.add("고장 증상 세부내역");
     }
     if (repairAmountController.text.trim().isEmpty) missingFields.add("수리금액");
+    if (_issues['기타'] == true) {
+      if (otherInputController.text.trim().isEmpty) missingFields.add('기타고장증상');
+    }
 
     // 수리 내용 체크박스 검증
     bool isAnyRepairDetailChecked = _repairDetails.values.contains(true);
@@ -158,49 +198,73 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
     }
   }
 
-  void saveConcent() {
-    // RepairRequestModel 객체 생성
-    final repairRequest = RepairRequestModel(
-      nameForStorage:
-          "repair_${DateTime.now().millisecondsSinceEpoch}", // 저장용 이름
-      customerName: nameController.text.trim(),
-      contact: contactController.text.trim(),
-      residence: addressController.text.trim(),
-      deviceModel: modelController.text.trim(),
-      devicePassword: passwordController.text.trim(),
-      hasLoanPhone: hasLoanPhoneController.text.trim().isEmpty
-          ? "" // 입력값이 없으면 빈 문자열
-          : hasLoanPhoneController.text.trim().toLowerCase(), // 값이 'yes'면 true
-      issueDetails: Map.from(_issues), // 고장 증상 Map
-      repairDetails: Map.from(_repairDetails), // 수리 내용 Map
-      isScreenDamaged: hasScreenDamage, // 액정 파손 여부
-      hasSimCard: hasUsim, // 유심 여부
-      detailedIssue: issueDetailsController.text.trim(),
-      repairCost: double.tryParse(repairAmountController.text.trim()) ?? 0.0,
-      reviewOptions: {
-        'naver': naver,
-        'google': google,
-        'daangn': daangn
-      }, // 리뷰 참여 옵션
-      hasNaverReservation: naverBook, // 네이버 예약 여부
-      hasDiscount: presidentPhoneSale, // 할인 여부
-      requiredConsent: _requiredConsent!,
-      selectiveConsent: _selectiveConsent,
-      imageUrl: null, // 이미지 URL은 선택사항
-    );
+  void saveConcent() async {
+    try {
+      final String? agreementName = await _showAgreementNameDialog(context);
+      if (agreementName == null || agreementName.trim().isEmpty) {
+        _showError("동의서 이름을 입력해주세요.");
+        return;
+      }
 
-    RepairConsentPdfGenerator.generateConsentPdf(
-        request: repairRequest, signature: _signatureImage);
+      // RepairRequestModel 객체 생성
+      final repairRequest = RepairRequestModel(
+        nameForStorage: agreementName, // 저장용 이름
+        customerName: nameController.text.trim(),
+        contact: contactController.text.trim(),
+        residence: addressController.text.trim(),
+        deviceModel: modelController.text.trim(),
+        devicePassword: passwordController.text.trim(),
+        hasLoanPhone: hasLoanPhoneController.text.trim().isEmpty
+            ? "" // 입력값이 없으면 빈 문자열
+            : hasLoanPhoneController.text.trim().toLowerCase(),
+        issueDetails: Map.from(_issues), // 고장 증상 Map
+        otherIssueDetail: otherInputController.text.trim(),
+        repairDetails: Map.from(_repairDetails), // 수리 내용 Map
+        isScreenDamaged: hasScreenDamage, // 액정 파손 여부
+        hasSimCard: hasUsim, // 유심 여부
+        detailedIssue: issueDetailsController.text.trim(),
+        repairCost: repairAmountController.text.trim(),
+        reviewOptions: {
+          'naver': naver,
+          'google': google,
+          'daangn': daangn,
+        }, // 리뷰 참여 옵션
+        hasNaverReservation: naverBook, // 네이버 예약 여부
+        hasDiscount: presidentPhoneSale, // 할인 여부
+        requiredConsent: _requiredConsent!,
+        selectiveConsent: _selectiveConsent,
+        imageUrl: null, // 이미지 URL은 선택사항
+      );
 
-    // 생성된 객체를 확인 (테스트용 출력)
-    print("Repair Request Model Created: ${repairRequest.toMap()}");
+      // PDF 생성
+      Uint8List pdfData = await RepairConsentPdfGenerator.generateConsentPdf(
+        request: repairRequest,
+        signature: _signatureImage,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("수리의뢰서가 성공적으로 저장되었습니다!"),
-        backgroundColor: Colors.green,
-      ),
-    );
+      // Firebase에 저장
+      await SaveService.saveRepairAgreement(
+        repairRequest: repairRequest,
+        pdfData: pdfData,
+        imageData: _signatureImage,
+      );
+
+      // 저장 완료 메시지
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("수리의뢰서가 성공적으로 저장되었습니다!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // 에러 처리
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("저장 중 오류가 발생했습니다: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -580,7 +644,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                                   decoration: InputDecoration(
                                     isDense: true, // 기본 패딩 제거
                                     contentPadding:
-                                        EdgeInsets.all(10), // 내부 패딩 제거
+                                        const EdgeInsets.all(10), // 내부 패딩 제거
                                     border: InputBorder.none,
                                     hintText: '입력해주세요',
                                     hintStyle: TextStyle(
@@ -719,8 +783,8 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                   Expanded(
                       flex: 5,
                       child: Container(
-                        decoration:
-                            BoxDecoration(border: Border(left: BorderSide())),
+                        decoration: const BoxDecoration(
+                            border: Border(left: BorderSide())),
                         height: MediaQuery.of(context).size.height * 0.15,
                         child: Center(
                           child: Text(
@@ -734,25 +798,25 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
             ),
             Container(
               decoration: BoxDecoration(border: Border.all()),
+              height: MediaQuery.of(context).size.height * 0.155,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                       child: Row(
                     children: [
                       Expanded(
-                          child: Container(
-                        height: MediaQuery.of(context).size.height * 0.12,
-                        decoration:
-                            BoxDecoration(border: Border(right: BorderSide())),
-                        child: Center(
-                          child: Text(
-                            '수리금액(원)',
-                            style: TextStyle(
-                                fontSize: fontSize,
-                                fontWeight: FontWeight.bold),
-                          ),
+                          child: Center(
+                        child: Text(
+                          '수리금액(원)',
+                          style: TextStyle(
+                              fontSize: fontSize, fontWeight: FontWeight.bold),
                         ),
                       )),
+                      const VerticalDivider(
+                        width: 1,
+                        color: Colors.black,
+                      ),
                       Expanded(
                           flex: 2,
                           child: TextFormField(
@@ -775,11 +839,12 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                   Expanded(
                       child: Column(
                     children: [
-                      Row(
+                      Expanded(
+                          child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
                               child: Container(
-                            height: MediaQuery.of(context).size.height * 0.04,
                             decoration: const BoxDecoration(
                                 border: Border(
                               left: BorderSide(),
@@ -848,17 +913,17 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                                 ],
                               )),
                         ],
-                      ),
+                      )),
                       const Divider(
                         height: 1,
                         color: Colors.black,
                       ),
-                      Row(
+                      Expanded(
+                          child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
                               child: Container(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.04,
                                   decoration: const BoxDecoration(
                                       border: Border(
                                     left: BorderSide(),
@@ -894,17 +959,17 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                                 ],
                               )),
                         ],
-                      ),
+                      )),
                       const Divider(
                         height: 1,
                         color: Colors.black,
                       ),
-                      Row(
+                      Expanded(
+                          child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
                               child: Container(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.04,
                                   decoration: const BoxDecoration(
                                       border: Border(
                                     left: BorderSide(),
@@ -940,7 +1005,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                                 ],
                               )),
                         ],
-                      )
+                      ))
                     ],
                   ))
                 ],
@@ -963,7 +1028,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
               '2. 메인보드 수리 도중 데이터 유실 및 기타 이상 증상이 발생할 수 있습니다. 이에 대한 당사의 책임이 없음을 공지 드립니다.\n'
               '3. 기기의 비밀번호를 적어주시기 바랍니다. 수리 후 기기 점검을 위해 필요합니다.\n'
               '4. 액정, 카메라, 배터리 등 부품 교체의 경우 교체 메시지가 보일 수 있습니다.\n'
-              '5. 후면 유리 수리 경우, 충격 여부에 따라 메인보드 및 기타 이상 증상 있을수 있습니다.(추가비용발생합니다.)\n'
+              '5. 후면 유리 수리 경우, 충격 여부에 따라 메인보드 및 기타 이상 증상 있을 수 있습니다.(추가비용 발생합니다.)\n'
               '6. 모든 수리는 수리 완료 후 입금해주시는 건에 대해 당일 출고가 진행됩니다.\n'
               '7. 수리 후 보증기간은 6개월입니다.(단 고객과실 시 유상수리 진행)\n'
               '8. 수리 후 정식센터에서 리퍼 및 수리가 불가 할수도 있습니다.\n'
@@ -1067,6 +1132,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
                   customerName,
                   style: TextStyle(
                       fontSize: fontSize * 1.6, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
               ),
               GestureDetector(

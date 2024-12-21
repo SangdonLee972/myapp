@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:myapp/model/repair_concent.dart';
 import 'package:myapp/model/used_phone_purchase.dart';
 import 'dart:typed_data';
 
@@ -50,6 +51,34 @@ class SaveService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getRepairRecords() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('repairAgreements') // 컬렉션 이름 일치
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'customerName': data['customerName'] ?? '',
+          'contact': data['contact'] ?? '',
+          'deviceModel': data['deviceModel'] ?? '',
+          'residence': data['residence'] ?? '',
+          'devicePassword': data['devicePassword'] ?? '',
+          'issueDetails': Map<String, bool>.from(data['issueDetails'] ?? {}),
+          'repairDetails': Map<String, bool>.from(data['repairDetails'] ?? {}),
+          'repairCost': data['repairCost'] ?? '',
+                  'selectiveConsent': data['selectiveConsent'] == true
+            ? '동의'
+            : '비동의', // selectiveConsent를 '동의' 또는 '비동의'로 변환
+        };
+      }).toList();
+    } catch (e) {
+      print('Error fetching repair records: $e');
+      throw Exception('Failed to fetch repair records');
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getSavedRecords() async {
     try {
       // Firestore의 'purchaseAgreements' 컬렉션에서 데이터 가져오기
@@ -73,6 +102,41 @@ class SaveService {
     } catch (e) {
       print('Error fetching records: $e');
       throw Exception('Failed to fetch records');
+    }
+  }
+
+  static String _formatMap(Map<String, bool> map) {
+    return map.entries
+        .where((entry) => entry.value == true)
+        .map((entry) => entry.key)
+        .join(', ');
+  }
+
+  static Future<void> saveRepairAgreement({
+    required RepairRequestModel repairRequest,
+    required Uint8List pdfData,
+    Uint8List? imageData,
+  }) async {
+    try {
+      final pdfFileName = '${repairRequest.nameForStorage}.pdf';
+      final pdfUrl = await uploadFile(pdfData, pdfFileName);
+
+      String? imageUrl;
+      if (imageData != null) {
+        final imageFileName = '${repairRequest.nameForStorage}-image.png';
+        imageUrl = await uploadFile(imageData, imageFileName);
+      }
+
+      final repairData = repairRequest.toMap();
+      repairData['pdfUrl'] = pdfUrl;
+      repairData['imageUrl'] = imageUrl;
+      repairData['createdAt'] = FieldValue.serverTimestamp();
+
+      await _firestore.collection('repairAgreements').add(repairData);
+      print('Repair agreement saved successfully.');
+    } catch (e) {
+      print('Error saving repair agreement: $e');
+      throw Exception('Failed to save repair agreement.');
     }
   }
 }

@@ -10,12 +10,13 @@ class RepairRequestModel {
 
   // 고장 증상과 수리 내용
   final Map<String, bool> issueDetails; // 고장 증상 (액정파손, 배터리 등)
+  final String otherIssueDetail;
   final Map<String, bool> repairDetails; // 수리 내용 (전원 불량, 화면 불량 등)
 
   final bool isScreenDamaged; // 액정 파손 여부
   final bool hasSimCard; // 유심 있음 여부
   final String detailedIssue; // 고장 증상 세부내역
-  final double repairCost; // 수리 금액
+  final String repairCost; // 수리 금액
   final bool requiredConsent;
   final bool selectiveConsent;
 
@@ -34,6 +35,7 @@ class RepairRequestModel {
     required this.devicePassword,
     required this.hasLoanPhone,
     required this.issueDetails, // 고장 증상 Map
+    required this.otherIssueDetail,
     required this.repairDetails, // 수리 내용 Map
     required this.isScreenDamaged,
     required this.hasSimCard,
@@ -44,7 +46,7 @@ class RepairRequestModel {
     required this.hasDiscount,
     required this.nameForStorage,
     required this.requiredConsent, // 필수 동의
-    required this.selectiveConsent,  // 선택 동의
+    required this.selectiveConsent, // 선택 동의
     this.imageUrl,
   });
 
@@ -57,6 +59,7 @@ class RepairRequestModel {
       'devicePassword': devicePassword,
       'hasLoanPhone': hasLoanPhone,
       'issueDetails': issueDetails, // 고장 증상 Map
+      'otherIssueDetail': otherIssueDetail,
       'repairDetails': repairDetails, // 수리 내용 Map
       'isScreenDamaged': isScreenDamaged,
       'hasSimCard': hasSimCard,
@@ -66,8 +69,8 @@ class RepairRequestModel {
       'hasNaverReservation': hasNaverReservation,
       'hasDiscount': hasDiscount,
       'nameForStorage': nameForStorage,
-      'requiredConsent' : requiredConsent,
-      'selectiveConsent' : selectiveConsent,
+      'requiredConsent': requiredConsent,
+      'selectiveConsent': selectiveConsent,
       'imageUrl': imageUrl,
     };
   }

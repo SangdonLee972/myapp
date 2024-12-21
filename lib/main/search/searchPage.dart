@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart'; // 웹 PDF 링크 열기
+import 'dart:html' as html; // 웹용 HTML 라이브러리 추가
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -29,21 +32,46 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('purchaseAgreements') // 컬렉션 이름
+      List<Map<String, dynamic>> purchaseResults = [];
+      List<Map<String, dynamic>> repairResults = [];
+
+      // 1. purchaseAgreements 컬렉션 검색
+      final purchaseSnapshot = await FirebaseFirestore.instance
+          .collection('purchaseAgreements')
           .where('nameForStorage', isGreaterThanOrEqualTo: query)
           .where('nameForStorage', isLessThanOrEqualTo: '$query\uf8ff')
           .get();
 
+      purchaseResults = purchaseSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'nameForStorage': data['nameForStorage'] ?? 'No Name',
+          'pdfUrl': data['pdfUrl'] ?? '',
+          'collection': 'purchaseAgreements',
+        };
+      }).toList();
+
+      // 2. repairAgreements 컬렉션 검색
+      final repairSnapshot = await FirebaseFirestore.instance
+          .collection('repairAgreements')
+          .where('nameForStorage', isGreaterThanOrEqualTo: query)
+          .where('nameForStorage', isLessThanOrEqualTo: '$query\uf8ff')
+          .get();
+
+      repairResults = repairSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'nameForStorage': data['nameForStorage'] ?? 'No Name',
+          'pdfUrl': data['pdfUrl'] ?? '',
+          'collection': 'repairAgreements',
+        };
+      }).toList();
+
+      // 두 컬렉션 결과 병합
       setState(() {
-        _searchResults = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'nameForStorage': data['nameForStorage'] ?? 'No Name',
-            'pdfUrl': data['pdfUrl'] ?? '', // null 처리
-          };
-        }).toList();
+        _searchResults = [...purchaseResults, ...repairResults];
       });
     } catch (e) {
       print('Error fetching data: $e');
@@ -138,7 +166,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   @override
   void initState() {
     super.initState();
-    _downloadAndSavePdf();
+    _processPdf();
+  }
+
+  Future<void> _processPdf() async {
+    if (kIsWeb) {
+      // 웹 환경: 새 탭에서 PDF 열기
+      html.AnchorElement anchor = html.AnchorElement(href: widget.pdfUrl)
+        ..target = 'blank' // 새 탭에서 열기
+        ..click();
+    } else {
+      // 모바일 환경: PDF 다운로드 후 표시
+      await _downloadAndSavePdf();
+    }
   }
 
   Future<void> _downloadAndSavePdf() async {
@@ -171,11 +211,18 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       appBar: AppBar(
         title: const Text('PDF Viewer'),
       ),
-      body: localFilePath != null
-          ? PDFView(
-              filePath: localFilePath, // 로컬 파일 경로 전달
+      body: kIsWeb
+          ? const Center(
+              child: Text(
+                'PDF가 새 탭에서 열렸습니다.',
+                style: TextStyle(fontSize: 16),
+              ),
             )
-          : const Center(child: CircularProgressIndicator()),
+          : localFilePath != null
+              ? PDFView(
+                  filePath: localFilePath, // 로컬 파일 경로 전달
+                )
+              : const Center(child: CircularProgressIndicator()),
     );
   }
 }

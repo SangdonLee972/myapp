@@ -30,6 +30,8 @@ class UsedPhonePdfGenerater {
     final logoImage = await rootBundle.load('assets/img/usedPhoneLogo.jpg');
     final fileName = 'contract_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
+    String formattedDate =
+        '${agreement.saleDate.year}.${agreement.saleDate.month.toString().padLeft(2, '0')}.${agreement.saleDate.day.toString().padLeft(2, '0')}';
     // 스타일 정의
     final defaultTextStyle = pw.TextStyle(font: ttf, fontSize: 9);
     final boldTextStyle = pw.TextStyle(
@@ -89,8 +91,8 @@ class UsedPhonePdfGenerater {
               pw.SizedBox(height: 16),
 
               // 판매자 정보 섹션
-              _buildInfoRowTwo('매각일자', agreement.saleDate.toString(), '매입 업체명',
-                  agreement.companyName, ttf),
+              _buildInfoRowTwo(
+                  '매각일자', formattedDate, '매입 업체명', agreement.companyName, ttf),
               pw.SizedBox(height: 5),
               _buildInfoRowTwo('판매자명', agreement.sellerName, '판매자 생년월일',
                   agreement.birthdate, ttf),
@@ -122,7 +124,7 @@ class UsedPhonePdfGenerater {
                     text: '기기가 아님을 확인 후 매도하였으며, 추후에 ', style: defaultTextStyle),
                 pw.TextSpan(text: '분실/도난 ', style: redTextStyle),
                 pw.TextSpan(
-                  text: '등의 사유로 문제가 발생할 경우 민, 형사의 모든 책임을 지는 것에 대해 동의합니다.',
+                  text: '등의 사유로 문제가\n발생할 경우 민, 형사의 모든 책임을 지는 것에 대해 동의합니다.',
                   style: defaultTextStyle,
                 ),
               ], agreement.isNotStolenOrLost, ttf),
@@ -149,22 +151,70 @@ class UsedPhonePdfGenerater {
                 pw.TextSpan(text: '이 불가능함을 동의합니다.', style: defaultTextStyle),
               ], agreement.noRefund, ttf),
 
+              pw.SizedBox(height: 8),
+
+              _buildDetailedAgreementRow([
+                pw.TextSpan(text: '※ 매도 후 추후에', style: defaultTextStyle),
+                pw.TextSpan(
+                    text: ' 미납/연체/직권해지/AS 및 사설수리/암호잠김/침수 ',
+                    style: redTextStyle),
+                pw.TextSpan(
+                    text: '등의 사유로 문제가 발생시 기기 및 기기 상태에 따라\n최소 1만원~100만원 상당의 금액이',
+                    style: defaultTextStyle),
+                pw.TextSpan(text: '매입가에서 환수', style: redTextStyle),
+                pw.TextSpan(
+                    text: '될 수 있음 과 이로 인한 민,형사상의 모든 책임을 지는 것에 동의합니다.',
+                    style: defaultTextStyle),
+              ], agreement.hasResponsibilityForIssues, ttf),
+
               pw.SizedBox(height: 16),
 
               // 서명 섹션
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.end,
                 children: [
-                  pw.Text('판매자: ', style: boldTextStyle),
+                  pw.Text(
+                    '판매자 :',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
                   pw.Container(
                     width: 70,
-                    child: pw.Text(agreement.sellerName, style: boldTextStyle),
+                    child: pw.Text(agreement.sellerName,
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                        textAlign: pw.TextAlign.center),
                   ),
                   pw.SizedBox(width: 10),
-                  if (signature != null)
-                    pw.Image(pw.MemoryImage(signature), height: 40)
-                  else
-                    pw.Text('[서명]', style: redTextStyle),
+                  pw.Stack(
+                    alignment: pw.Alignment.center,
+                    children: [
+                      // Signature Image (if present)
+                      if (signature != null)
+                        pw.Image(
+                          pw.MemoryImage(signature),
+                          fit: pw.BoxFit.contain,
+                          width: 50, // Adjust width as needed
+                          height: 20, // Adjust height as needed
+                        ),
+                      // Placeholder text
+                      pw.Text(
+                        '(인)',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
 
@@ -217,8 +267,6 @@ class UsedPhonePdfGenerater {
       throw UnsupportedError('지원되지 않는 플랫폼입니다.');
     }
   }
-
-  
 
   static pw.Widget _buildInfoRowTwo(
       String label1, String value1, String label2, String value2, pw.Font ttf) {
@@ -406,6 +454,4 @@ class UsedPhonePdfGenerater {
       ],
     );
   }
-
-  
 }
