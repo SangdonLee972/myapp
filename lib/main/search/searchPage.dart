@@ -6,7 +6,6 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart'; // 웹 PDF 링크 열기
-import 'dart:html' as html; // 웹용 HTML 라이브러리 추가
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -98,7 +97,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search Records'),
+        title: const Text('Search'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -170,15 +169,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 
   Future<void> _processPdf() async {
-    if (kIsWeb) {
-      // 웹 환경: 새 탭에서 PDF 열기
-      html.AnchorElement anchor = html.AnchorElement(href: widget.pdfUrl)
-        ..target = 'blank' // 새 탭에서 열기
-        ..click();
-    } else {
-      // 모바일 환경: PDF 다운로드 후 표시
-      await _downloadAndSavePdf();
-    }
+    await _downloadAndSavePdf();
   }
 
   Future<void> _downloadAndSavePdf() async {

@@ -321,7 +321,7 @@ class _RepairConsentPageState extends State<RepairConsentPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '    계좌번호: 새마을 / 9003-2885-7867-0 / 장정현',
+                  '  계좌번호: 새마을 / 9003-2885-7867-0 / 장정현',
                   style: TextStyle(fontSize: fontSize * 1.1),
                 ),
                 Text(

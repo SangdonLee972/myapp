@@ -4,7 +4,6 @@ import 'package:myapp/model/used_phone_purchase.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
-import 'dart:html' as html;
 
 class UsedPhonePdfGenerater {
   // 웹 환경 감지 함수 (static으로 변경)
@@ -244,17 +243,7 @@ class UsedPhonePdfGenerater {
 
     final Uint8List pdfData = await pdf.save();
 
-    if (isWeb()) {
-      // **웹 환경**: 브라우저 다운로드 트리거
-      final blob = html.Blob([pdfData], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', fileName)
-        ..click();
-      html.Url.revokeObjectUrl(url);
-
-      return pdfData;
-    } else if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid || Platform.isIOS) {
       // **모바일(Android/iOS)**: 로컬 파일 저장
       final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/a.pdf';

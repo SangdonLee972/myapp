@@ -3,7 +3,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart';
 import 'package:myapp/model/repair_concent.dart';
-import 'dart:html' as html;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
@@ -26,13 +25,13 @@ class RepairConsentPdfGenerator {
         '${now.year}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}';
     final customPageFormat = PdfPageFormat(
       PdfPageFormat.a4.width, // A4의 너비 유지
-      PdfPageFormat.a4.height + 270, // 기본 높이에 270pt 추가
+      PdfPageFormat.a4.height + 275, // 기본 높이에 270pt 추가
     );
     try {
       pdf.addPage(
         pw.Page(
           pageFormat: customPageFormat,
-          margin: const pw.EdgeInsets.symmetric(vertical: 10),
+          margin: const pw.EdgeInsets.only(top: 8),
           build: (pw.Context context) {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -69,7 +68,8 @@ class RepairConsentPdfGenerator {
                 // Issue Details Section
                 _buildBoxWithTitle(
                   "고장 증상",
-                  _buildCheckBoxGroup(request.issueDetails, ttf),
+                  _buildCheckBoxGroup(request.issueDetails, ttf,
+                      other: request.otherIssueDetail),
                   ttf,
                 ),
                 _buildFaultAndDamageSection(request.isScreenDamaged,
@@ -90,7 +90,10 @@ class RepairConsentPdfGenerator {
                 // Repair Details Section
                 _buildBoxWithTitle(
                   "수리 내용",
-                  _buildCheckBoxGroup(request.repairDetails, ttf),
+                  _buildCheckBoxGroup(
+                    request.repairDetails,
+                    ttf,
+                  ),
                   ttf,
                 ),
                 buildRepairRequestBox(ttf),
@@ -115,28 +118,34 @@ class RepairConsentPdfGenerator {
                       ),
                     ]),
 
-                _buildNoticeParagraph(ttf),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(left: 7),
+                  child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        _buildNoticeParagraph(ttf),
+                        pw.SizedBox(height: 8),
 
-                pw.SizedBox(height: 8),
+                        // Privacy Consent Section
+                        _buildSectionTitle("개인정보 수집 동의 (필수)", ttf),
+                        _buildPrivacyAgreement(ttf),
+                        pw.SizedBox(height: 3),
+                        pw.Row(children: [
+                          _buildCheckBox(request.requiredConsent, '동의함', ttf),
+                          pw.SizedBox(width: 10),
+                          _buildCheckBox(!request.requiredConsent, '동의 안함', ttf)
+                        ]),
 
-                // Privacy Consent Section
-                _buildSectionTitle("개인정보 수집 동의 (필수)", ttf),
-                _buildPrivacyAgreement(ttf),
-                pw.SizedBox(height: 3),
-                pw.Row(children: [
-                  _buildCheckBox(request.requiredConsent, '동의함', ttf),
-                  pw.SizedBox(width: 10),
-                  _buildCheckBox(!request.requiredConsent, '동의 안함', ttf)
-                ]),
+                        pw.SizedBox(height: 8),
 
-                pw.SizedBox(height: 8),
-
-                // Event Agreement Section
-                _buildSectionTitle("이벤트 활용 동의 및 광고 수신 동의 (선택)", ttf),
-                _buildEventAgreement(ttf),
-                pw.SizedBox(height: 3),
-                _buildCheckBox(
-                    request.requiredConsent, 'SMS, SNS 수신동의(선택)', ttf),
+                        // Event Agreement Section
+                        _buildSectionTitle("이벤트 활용 동의 및 광고 수신 동의 (선택)", ttf),
+                        _buildEventAgreement(ttf),
+                        pw.SizedBox(height: 3),
+                        _buildCheckBox(
+                            request.requiredConsent, 'SMS, SNS 수신동의(선택)', ttf),
+                      ]),
+                ),
 
                 pw.SizedBox(height: 10),
 
@@ -165,17 +174,7 @@ class RepairConsentPdfGenerator {
     try {
       final Uint8List pdfData = await pdf.save();
       print('Saving~');
-      if (isWeb()) {
-        // **웹 환경**: 브라우저 다운로드 트리거
-        final blob = html.Blob([pdfData], 'application/pdf');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.AnchorElement(href: url)
-          ..setAttribute('download', fileName)
-          ..click();
-        html.Url.revokeObjectUrl(url);
-        print('what??');
-        return pdfData;
-      } else if (Platform.isAndroid || Platform.isIOS) {
+   if (Platform.isAndroid || Platform.isIOS) {
         // **모바일(Android/iOS)**: 로컬 파일 저장
         final directory = await getApplicationDocumentsDirectory();
         final filePath = '${directory.path}/$fileName';
@@ -201,6 +200,7 @@ class RepairConsentPdfGenerator {
         pw.Text("  필수 입력 부탁드립니다 ",
             style: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold))
       ]),
+      pw.SizedBox(height: 2),
       pw.Container(
         padding: const pw.EdgeInsets.all(8),
         color: PdfColors.blue100,
@@ -234,7 +234,7 @@ class RepairConsentPdfGenerator {
       title,
       style: pw.TextStyle(
         font: ttf,
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: pw.FontWeight.bold,
       ),
     );
@@ -656,12 +656,18 @@ class RepairConsentPdfGenerator {
   }
 
   /// Builds a group of checkboxes for issues or repair details.
-  static pw.Widget _buildCheckBoxGroup(Map<String, bool> items, pw.Font ttf) {
+  static pw.Widget _buildCheckBoxGroup(Map<String, bool> items, pw.Font ttf,
+      {String other = ''}) {
+    print('other:$other');
     return pw.Wrap(
       spacing: 10,
       runSpacing: 4,
       children: items.entries.map((entry) {
-        return _buildCheckBox(entry.value, entry.key, ttf);
+        return pw.Row(mainAxisSize: pw.MainAxisSize.min, children: [
+          _buildCheckBox(entry.value, entry.key, ttf),
+          if (entry.key == '기타' && entry.value)
+            pw.Text(other, style: pw.TextStyle(fontSize: 10, font: ttf))
+        ]);
       }).toList(),
     );
   }
@@ -692,7 +698,7 @@ class RepairConsentPdfGenerator {
     return pw.Text(
       "본 수리센터의 이벤트 참여 등을 위해 아래와 같이 개인정보를 수집·이용합니다.\n"
       "수집 목적: 이벤트 안내 / 수집 항목: 성명, 전화번호 / 보유 기간: 3년",
-      style: pw.TextStyle(font: ttf, fontSize: 8),
+      style: pw.TextStyle(font: ttf, fontSize: 9),
     );
   }
 
@@ -701,7 +707,7 @@ class RepairConsentPdfGenerator {
     return pw.Text(
       "수리 안내 및 이벤트 공지(ex. 배터리 무료 교체) 등 다양한 정보를 제공합니다.\n"
       "SMS, SNS 수신 동의 여부에 체크해주세요.",
-      style: pw.TextStyle(font: ttf, fontSize: 8),
+      style: pw.TextStyle(font: ttf, fontSize: 9),
     );
   }
 
@@ -826,7 +832,7 @@ class RepairConsentPdfGenerator {
           padding: const pw.EdgeInsets.only(bottom: 2),
           child: pw.Text(
             line,
-            style: pw.TextStyle(font: ttf, fontSize: 8),
+            style: pw.TextStyle(font: ttf, fontSize: 9),
           ),
         );
       }).toList(),

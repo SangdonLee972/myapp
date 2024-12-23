@@ -48,6 +48,7 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   flutter_cached_pdfview: ^0.4.3
   url_launcher: ^6.3.1
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

@@ -45,9 +45,11 @@ class _LoginPageState extends State<LoginPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Login successful!")));
 
-                  Navigator.push(
+                  // 로그인 성공 후 메인 페이지로 이동 시 이전 스택 제거
+                  Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (context) => const MainScreen()),
+                    (route) => false, // 이전 모든 경로 제거
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(

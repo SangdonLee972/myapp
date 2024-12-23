@@ -22,12 +22,6 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
-      case TargetPlatform.iOS:
-        return ios;
-      case TargetPlatform.macOS:
-        return macos;
-      case TargetPlatform.windows:
-        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -41,48 +35,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDATFR6g_USmIw3W0mRnPyXexYhL2cLPeE',
-    appId: '1:168868210085:web:778c39d5802e64eb24b44c',
-    messagingSenderId: '168868210085',
-    projectId: 'projectf-49e7f',
-    authDomain: 'projectf-49e7f.firebaseapp.com',
-    storageBucket: 'projectf-49e7f.firebasestorage.app',
-    measurementId: 'G-GGG95BJ5DE',
+    apiKey: 'AIzaSyB72u0IZKeLP2ar9077kDSk2U6o4VA3MnE',
+    appId: '1:520863827871:web:b9a8af571541d5f4649faa',
+    messagingSenderId: '520863827871',
+    projectId: 'poker2-a69d2',
+    authDomain: 'poker2-a69d2.firebaseapp.com',
+    storageBucket: 'poker2-a69d2.firebasestorage.app',
+    measurementId: 'G-WLWJW231Q9',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB0PNFp5MGciVwSdsE8QnqGPRBw9XtFlHU',
-    appId: '1:168868210085:android:2a7283f610e29ebe24b44c',
-    messagingSenderId: '168868210085',
-    projectId: 'projectf-49e7f',
-    storageBucket: 'projectf-49e7f.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBv1RTLfxS8zjSl1d9pkc69x2O7ZHpsRLY',
-    appId: '1:168868210085:ios:565c6075a45e935124b44c',
-    messagingSenderId: '168868210085',
-    projectId: 'projectf-49e7f',
-    storageBucket: 'projectf-49e7f.firebasestorage.app',
-    iosBundleId: 'com.example.myapp',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBv1RTLfxS8zjSl1d9pkc69x2O7ZHpsRLY',
-    appId: '1:168868210085:ios:565c6075a45e935124b44c',
-    messagingSenderId: '168868210085',
-    projectId: 'projectf-49e7f',
-    storageBucket: 'projectf-49e7f.firebasestorage.app',
-    iosBundleId: 'com.example.myapp',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDATFR6g_USmIw3W0mRnPyXexYhL2cLPeE',
-    appId: '1:168868210085:web:9a27f4a67213f71224b44c',
-    messagingSenderId: '168868210085',
-    projectId: 'projectf-49e7f',
-    authDomain: 'projectf-49e7f.firebaseapp.com',
-    storageBucket: 'projectf-49e7f.firebasestorage.app',
-    measurementId: 'G-G6HR70MHC0',
+    apiKey: 'AIzaSyDe_rne-3LlXCnoOHjamP49xiPrtN2WcvI',
+    appId: '1:520863827871:android:38397a9d49af36b6649faa',
+    messagingSenderId: '520863827871',
+    projectId: 'poker2-a69d2',
+    storageBucket: 'poker2-a69d2.firebasestorage.app',
   );
 }

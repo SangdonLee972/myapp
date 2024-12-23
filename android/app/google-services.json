@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "168868210085",
-    "project_id": "projectf-49e7f",
-    "storage_bucket": "projectf-49e7f.firebasestorage.app"
+    "project_number": "520863827871",
+    "project_id": "poker2-a69d2",
+    "storage_bucket": "poker2-a69d2.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:168868210085:android:2a7283f610e29ebe24b44c",
+        "mobilesdk_app_id": "1:520863827871:android:38397a9d49af36b6649faa",
         "android_client_info": {
           "package_name": "com.example.myapp"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB0PNFp5MGciVwSdsE8QnqGPRBw9XtFlHU"
+          "current_key": "AIzaSyDe_rne-3LlXCnoOHjamP49xiPrtN2WcvI"
         }
       ],
       "services": {

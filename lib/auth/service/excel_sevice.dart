@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:path_provider/path_provider.dart';
-import 'dart:html' as html;
+import 'package:permission_handler/permission_handler.dart';
 
 class ExcelExportService {
   // 엑셀 파일 생성
@@ -89,32 +89,28 @@ class ExcelExportService {
         .join(', ');
   }
 
-  // 엑셀 파일 저장
-  static Future<void> saveExcelFile(
+  static Future<String?> saveExcelFile(
       String fileName, Uint8List excelData) async {
-    try {
-      if (kIsWeb) {
-        // 웹 플랫폼: AnchorElement를 사용한 파일 다운로드
-        final blob = html.Blob([excelData]);
-        final url = html.Url.createObjectUrlFromBlob(blob);
-
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute("download", fileName)
-          ..style.display = "none";
-        html.document.body!.append(anchor);
-        anchor.click(); // 클릭 이벤트 실행
-        anchor.remove();
-        html.Url.revokeObjectUrl(url);
-      } else {
-        // 모바일/데스크탑 플랫폼: 파일 저장
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/$fileName';
-        File file = File(filePath);
-        await file.writeAsBytes(excelData);
-        print('File saved to $filePath');
-      }
-    } catch (e) {
-      print("Error saving file: $e");
+    // 외부 저장소 권한 요청
+    final status = await Permission.storage.request();
+    if (!status.isGranted) {
+      print("Permission denied");
+      return null;
     }
+
+    // 외부 저장소 경로 가져오기
+    final directory = await getExternalStorageDirectory();
+    if (directory == null) {
+      print("External storage not available");
+      return null;
+    }
+
+    // 파일 저장
+    final filePath = '${directory.path}/$fileName';
+    final file = File(filePath);
+    await file.writeAsBytes(excelData);
+
+    print('File saved to $filePath');
+    return filePath; // 저장된 경로 반환
   }
 }
